@@ -28,8 +28,77 @@
 #include "EPD_4in0e.h"
 #include "EPD_DEV_Config.h"
 #include "SD_Nav.h"
+#include "Buttons.h"
 
+#define SD_PIN 10
 File root;
+
+unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
+Buttons currentButton = BUT_NONE;
+
+button_t buttons[] = {
+  {6, 0, 0, 0},
+  {7, 0, 0, 0},
+  {2, 0, 0, 0},
+  {3, 0, 0, 0},
+  {4, 0, 0, 0},
+  {5, 0, 0, 0}
+};
+
+void setup_buttons() {
+  for (int i = 1; i < (int)BUT_N; i++) {
+    pinMode(buttons[i-1].pin, INPUT_PULLUP);
+  }
+}
+
+void read_buttons() {
+  int reading;
+  button_t *current;
+  
+  currentButton = BUT_NONE;
+  
+  for (int i = 1; i < (int)BUT_N; i++) {
+    //Debug("Button ");
+    //Debug(i);
+    current = &buttons[i-1];
+    reading = digitalRead(current->pin);
+    //Debug(" reading=");
+    //Debug(reading);
+    
+    // If the switch changed, due to noise or pressing:
+    if (reading != current->lastState) {
+      // reset the debouncing timer
+      current->lastDebounceTime = millis();
+    }
+    
+    if ((millis() - current->lastDebounceTime) > debounceDelay) {
+    // whatever the reading is at, it's been there for longer than the debounce
+    // delay, so take it as the actual current state:
+
+    // if the button state has changed:
+      if (reading != current->state) {
+        current->state = reading;
+  
+        // only update the current button if the new button state is LOW (INPUT_PULLUP)
+        if (reading == LOW) {
+          currentButton = (Buttons)i;
+        }
+      }
+    }
+
+    current->lastState = reading;
+    //Debug("\r\n");
+  }
+}
+
+Buttons get_current_button() {
+  return currentButton;
+}
+
+void reset_button() {
+  currentButton = BUT_NONE;
+}
+
 
 void setup() {
   // Open serial communications and wait for port to open:
@@ -48,67 +117,79 @@ void setup() {
   DEV_Delay_ms(500);
 #endif
 
-  Serial.print("Initializing SD card...");
+  Debug("Initializing SD card...");
 
-  if (!SD.begin(4)) {
-    Serial.println("initialization failed!");
+  if (!SD.begin(SD_PIN)) {
+    Debug("initialization failed!\r\n");
     while (1);
   }
-  Serial.println("initialization done.");
+  Debug("initialization done.\r\n");
 
   nav_init();
-  
-  Serial.println("Start nav test");
-  
-  Serial.println(nav_file().name());
-  next_file();
-  Serial.println(nav_file().name());
-  next_file();
-  Serial.println(nav_file().name());
-  next_file();
-  Serial.println(nav_file().name());
-  prev_file();
-  Serial.println(nav_file().name());
-  prev_file();
-  Serial.println(nav_file().name());
-  prev_file();
-  Serial.println(nav_file().name());
-  prev_file();
-  Serial.println(nav_file().name());
-  prev_file();
-  Serial.println(nav_file().name());
-  next_file();
-  Serial.println(nav_file().name());
-  next_file();
-  Serial.println(nav_file().name());
 
-  Serial.println("done!");
+  setup_buttons();
+
+#if 0
+  Debug("Start nav test\r\n");
+  
+  Debug(nav_file().name());
+  Debug("\r\n");
+  next_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  next_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  next_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  prev_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  prev_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  prev_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  prev_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  prev_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  next_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+  next_file();
+  Debug(nav_file().name());
+  Debug("\r\n");
+#endif
+
+  Debug("done!\r\n");
 }
 
 void loop() {
-  // nothing happens after setup finishes.
-}
+  read_buttons();
+  if (currentButton != BUT_NONE) {
+    Debug("current button:");
+    Debug(currentButton);
+    Debug("\r\n");
+  }
 
-void printDirectory(File dir, int numTabs) {
-  while (true) {
-
-    File entry =  dir.openNextFile();
-    if (! entry) {
-      // no more files
+  switch (currentButton) {
+    case BUT_LEFT:
+      Debug("PREV > ");
+      prev_file();
+      Debug(nav_file().name());
+      Debug("\r\n");
       break;
-    }
-    for (uint8_t i = 0; i < numTabs; i++) {
-      Serial.print('\t');
-    }
-    Serial.print(entry.name());
-    if (entry.isDirectory()) {
-      Serial.println("/");
-      printDirectory(entry, numTabs + 1);
-    } else {
-      // files have sizes, directories do not
-      Serial.print("\t\t");
-      Serial.println(entry.size(), DEC);
-    }
-    entry.close();
+    
+    case BUT_RIGHT:
+      Debug("NEXT > ");
+      next_file();
+      Debug(nav_file().name());
+      Debug("\r\n");
+      break;
   }
 }

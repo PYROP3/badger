@@ -28,9 +28,16 @@ void next_file() {
 
 void prev_file() {
   File prev = dir.openNextFile();
+  File prev2;
+  bool hasPrev2 = false;
   if (!selected_file_index) {
     // If we are at the start of the list, we go to the last one (a.k.a. when the next one is null)
-    while (prev) {'
+    while (prev) {
+      if (hasPrev2) {
+        prev2.close();
+      }
+      hasPrev2 = true;
+      prev2 = selected_file;
       selected_file = prev;
       selected_file_index++;
       prev = dir.openNextFile();
