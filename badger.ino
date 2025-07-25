@@ -24,14 +24,25 @@
 #include <SPI.h>
 #include <SD.h>
 
-#include "Debug.h"
+// E-paper
 #include "EPD_4in0e.h"
 #include "EPD_DEV_Config.h"
+
+// SD card
 #include "SD_Nav.h"
+
+// Custom
 #include "Buttons.h"
+#include "Debug.h"
+
+// OLED
+#include "lcdgfx.h"
+#include "lcdgfx_gui.h"
 
 #define SD_PIN 10
 File root;
+
+DisplaySSD1306_128x64_I2C display(-1); // or (-1,{busId, addr, scl, sda, frequency}). This line is suitable for most platforms by default
 
 unsigned long debounceDelay = 50;    // the debounce time; increase if the output flickers
 Buttons currentButton = BUT_NONE;
@@ -107,6 +118,27 @@ void setup() {
     ; // wait for serial port to connect. Needed for native USB port only
   }
 
+  // Display setup
+  /* Select the font to use with menu and all font functions */
+  display.setFixedFont( ssd1306xled_font8x16 );
+
+  display.begin();
+
+  /* Uncomment 2 lines below to rotate your ssd1306 display by 180 degrees. */
+  // display.getInterface().flipVertical();
+  // display.getInterface().flipHorizontal();
+
+  Debug("Writing display test text\r\n");
+  display.clear();
+  display.printFixed(0, 10, "Normal text", STYLE_NORMAL);
+  display.printFixed(0, 20, "Bold text", STYLE_BOLD);
+  display.printFixed(0, 30, "Italic text", STYLE_ITALIC);
+  display.invertColors();
+  display.printFixed(0, 40, "Inverted bold", STYLE_BOLD);
+  display.invertColors();
+  lcd_delay(3000);
+  display.clear();
+
 #if 0
   Debug("EPD_4IN0E_test Demo\r\n");
   DEV_Module_Init();
@@ -126,6 +158,8 @@ void setup() {
   Debug("initialization done.\r\n");
 
   nav_init();
+  
+  display_selecting_file();
 
   setup_buttons();
 
@@ -169,6 +203,14 @@ void setup() {
   Debug("done!\r\n");
 }
 
+void display_selecting_file() {
+  display.clear();
+  display.printFixed(0, 10, "Selecting...", STYLE_NORMAL);
+  display.invertColors();
+  display.printFixed(0, 30, nav_file().name(), STYLE_NORMAL);
+  display.invertColors();
+}
+
 void loop() {
   read_buttons();
   if (currentButton != BUT_NONE) {
@@ -183,6 +225,7 @@ void loop() {
       prev_file();
       Debug(nav_file().name());
       Debug("\r\n");
+      display_selecting_file();
       break;
     
     case BUT_RIGHT:
@@ -190,6 +233,7 @@ void loop() {
       next_file();
       Debug(nav_file().name());
       Debug("\r\n");
+      display_selecting_file();
       break;
   }
 }
