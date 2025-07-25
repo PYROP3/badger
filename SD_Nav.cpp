@@ -27,29 +27,33 @@ void next_file() {
 }
 
 void prev_file() {
-  File prev = dir.openNextFile();
-  File prev2;
+  File next = dir.openNextFile();
+  File prev;
   bool hasPrev2 = false;
-  if (!selected_file_index) {
+  if (selected_file_index == 0) {
     // If we are at the start of the list, we go to the last one (a.k.a. when the next one is null)
-    while (prev) {
-      if (hasPrev2) {
-        prev2.close();
-      }
-      hasPrev2 = true;
-      prev2 = selected_file;
-      selected_file = prev;
-      selected_file_index++;
-      prev = dir.openNextFile();
+    if (!next) {
+      // This is the only file
+      return;
     }
+    prev = selected_file;
+    while (next) {
+      prev.close();
+      prev = selected_file;
+      selected_file = next;
+      selected_file_index++;
+      next = dir.openNextFile();
+    }
+    prev.close();
   } else {
     // Otherwise we rewind and open (selected_file_index - 1) files
+    selected_file.close();
     dir.rewindDirectory();
-    for (int i = 0; i < selected_file_index; i++) {
-      prev.close();
-      prev = dir.openNextFile();
+    for (int i = 0; i < selected_file_index - 1; i++) {
+      next.close();
+      next = dir.openNextFile();
     }
-    selected_file = prev;
+    selected_file = next;
     selected_file_index--;
   }
 }
